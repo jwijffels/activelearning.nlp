@@ -111,7 +111,7 @@ activelearning <- function(X, Y, data = X,
       SVD$v
     }
     embedding  <- dtm_svd(data_transformed, dim = ldots$dim)
-    similarity <- dtm_svd_similarity(data_transformed, embedding = embedding, weights = pattern)
+    similarity <- udpipe::dtm_svd_similarity(data_transformed, embedding = embedding, weights = pattern)
     similarity <- similarity$similarity$similarity[idx$unknown]
     out        <- list(type = type, pattern = pattern, args = ldots, idx = idx, data = data, similarity = similarity, model = embedding)
   }else if(type == "word2vec"){
@@ -126,7 +126,7 @@ activelearning <- function(X, Y, data = X,
     data_transformed <- data_transformed[idx$unknown]
     similarity       <- sapply(data_transformed, FUN=function(x, pattern_vector){
       wordvectors <- predict(object, newdata = x, type = "embedding")
-      similarity  <- word2vec_similarity(wordvectors, pattern_vector)
+      similarity  <- word2vec::word2vec_similarity(wordvectors, pattern_vector)
       similarity  <- drop(similarity)
       similarity  <- similarity[!is.na(similarity)]
       if(length(similarity) == 0){
@@ -147,7 +147,7 @@ activelearning <- function(X, Y, data = X,
     pattern_vector   <- word2vec::doc2vec(object, newdata = pattern) ## works also on multi-word expressions separated by space
     data_transformed <- data_transformed[idx$unknown]
     doc_vectors      <- word2vec::doc2vec(object, data_transformed, ...)
-    similarity       <- word2vec_similarity(doc_vectors, pattern_vector)
+    similarity       <- word2vec::word2vec_similarity(doc_vectors, pattern_vector)
     similarity       <- drop(similarity)
     out              <- list(type = type, pattern = pattern, args = ldots, idx = idx, data = data, similarity = similarity, model = object)
   }
