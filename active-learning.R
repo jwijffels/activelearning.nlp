@@ -14,10 +14,15 @@ is_tif <- function(x){
   inherits(x, "data.frame") && all(c("doc_id", "text") %in% colnames(x))
 }
 
+
 activelearning <- function(X, Y, data = X,
                            type = c("grep", "stringdist", "naive_bayes", "glmnet", "svm", "crfsuite", "nametagger", "svd_similarity", "word2vec", "doc2vec"), 
                            FUN = identity, AGG = max,
                            size = nrow(data), pattern, object, ...){
+  setnames <- function(object, nm){
+    names(object) <- nm
+    object
+  }
   ##
   ## data should always be a TIF data.frame
   ##
@@ -93,7 +98,7 @@ activelearning <- function(X, Y, data = X,
     model       <- glmnet::cv.glmnet(x = X[idx$known, , drop = FALSE], y = Y[idx$known], ...)
     newdata     <- X[idx$unknown, , drop = FALSE]
     similarity  <- predict(model, newdata, s = "lambda.1se", type = "response")
-    similarity  <- drop(similarity)
+    similarity  <- setnames(lapply(colnames(similarity), FUN=function(field) similarity[, field]), colnames(similarity))
     out         <- list(type = type, pattern = list(), args = ldots, idx = idx, data = data, FUN = FUN, similarity = similarity, model = model)
     # label_order <- apply(scores, MARGIN = 1, FUN = entropy::entropy.plugin)
     # label_order <- data.frame(doc_id = names(label_order),
@@ -190,7 +195,8 @@ sample.activelearning <- function(x, which = head(names(x$similarity), 1), type 
   ## TODO
   records <- x$data[x$idx$unknown, ]
   records[, names(x$similarity)] <- x$similarity
-  records <- records[order(records[[which]], decreasing = TRUE), , drop = FALSE]
+  records$similarity <- records[[which]]
+  records <- records[order(records$similarity, decreasing = TRUE), , drop = FALSE]
   records
 }
 
@@ -229,8 +235,12 @@ model <- activelearning(data = DB, Y = DB$target, type = "stringdist", pattern =
   x <- setNames(tolower(x$text), x$doc_id)
   strsplit(x, split = " ")
 })
-model <- activelearning(data = DB, Y = DB$target, type = "glmnet", family = "binomial", FUN = as_dtm)
 X <- as_dtm(DB)
+model <- activelearning(data = DB, X = X, Y = DB$target, type = "glmnet", family = "binomial")
+
+model <- activelearning(data = DB, Y = DB$target, type = "glmnet", family = "binomial", FUN = as_dtm)
+model <- activelearning(data = DB, X = X, Y = DB$target, type = "glmnet", family = "multinomial")
+
 model <- activelearning(data = DB, X = X, Y = DB$target, type = "svd_similarity", dim = 20,
                         pattern = list(goodbad = setNames(c(1, 1, -1, -1), c("good", "fantastic", "bad", "worse"))))
 model <- activelearning(data = DB, Y = DB$target, type = "svd_similarity", dim = 20,
@@ -246,8 +256,6 @@ model <- activelearning(data = DB, Y = DB$target, type = "doc2vec", object = w2v
                           docs <- setNames(txt_clean_w2v(docs$text), docs$doc_id)
                           strsplit(docs, split = " +")
                         })
-
-
 
 test <- sample(model)
 MASS::truehist(test$similarity)
