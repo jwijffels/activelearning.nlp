@@ -16,7 +16,7 @@ is_tif <- function(x){
 
 
 activelearning <- function(X, Y, data = X,
-                           type = c("grep", "stringdist", "naive_bayes", "glmnet", "svm", "crfsuite", "nametagger", "svd_similarity", "word2vec", "doc2vec"), 
+                           type = c("random", "grep", "stringdist", "naive_bayes", "glmnet", "svm", "crfsuite", "nametagger", "svd_similarity", "word2vec", "doc2vec"), 
                            FUN = identity, AGG = max,
                            size = nrow(data), pattern, object, ...){
   setnames <- function(object, nm){
@@ -41,7 +41,13 @@ activelearning <- function(X, Y, data = X,
   ## type grep: needs doc_id / text
   ## type naive_bayes/glmnet/svm: needs dtm
   ## type word2vec
-  if(type == "grep"){
+  if(type == "random"){
+    similarity <- lapply(pattern, FUN=function(pattern, ...){
+      similarity <- runif(min = 0, max = 1, n = length(idx$unknown))
+      similarity
+    }, ...)
+    out   <- list(type = type, pattern = pattern, idx = idx, data = data, FUN = FUN, similarity = similarity)
+  }else if(type == "grep"){
     ##
     ## Similarity based on regular expression
     ##
@@ -229,7 +235,7 @@ w2v  <- word2vec::word2vec(x = text, dim = 10, iter = 20, type = "cbow", min_cou
 summary(w2v)
 predict(w2v, c("music", "acting", "horrible"), type = "nearest")
 
-
+model <- activelearning(data = DB, Y = DB$target, type = "random", pattern = list(bad = "bad"))
 model <- activelearning(data = DB, Y = DB$target, type = "grep", pattern = list(bad = "bad"), ignore.case = TRUE, size = 100)
 model <- activelearning(data = DB, Y = DB$target, type = "stringdist", pattern = list(bad = "bad"), FUN = function(x){
   x <- setNames(tolower(x$text), x$doc_id)
@@ -237,6 +243,7 @@ model <- activelearning(data = DB, Y = DB$target, type = "stringdist", pattern =
 })
 X <- as_dtm(DB)
 model <- activelearning(data = DB, X = X, Y = DB$target, type = "glmnet", family = "binomial")
+aireply::drivers(model$model, importance = TRUE, importance_excludezero = TRUE)
 
 model <- activelearning(data = DB, Y = DB$target, type = "glmnet", family = "binomial", FUN = as_dtm)
 model <- activelearning(data = DB, X = X, Y = DB$target, type = "glmnet", family = "multinomial")
