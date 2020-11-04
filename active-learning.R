@@ -11,7 +11,7 @@
 ## contains > regular expressions or does not contain
 ## most uncertain
 is_tif <- function(x){
-  inherits(x, "data.frame") && all(c("doc_id", "text") %in% colnames(x))
+  inherits(x, "data.frame") && all(c("doc_id", "text") %in% colnames(x)) && is.character(x$text)
 }
 
 
